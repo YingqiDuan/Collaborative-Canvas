@@ -106,18 +106,22 @@ const getAllStrokes = async (supabase: SupabaseClient, roomId: string): Promise<
  */
 const clearAllStrokes = async (supabase: SupabaseClient, roomId: string) => {
     try {
+        // Use the dedicated function which has SECURITY DEFINER privileges
         const { error } = await supabase
-            .from(STROKES_TABLE)
-            .delete()
-            .eq('room_id', roomId);
+            .rpc('clear_room_strokes', { p_room_id: roomId });
             
         if (error) {
             console.error('Error clearing strokes:', error);
+            throw error; // Rethrow to be caught by the outer catch
         } else {
             console.log('All strokes cleared for room:', roomId);
         }
     } catch (error) {
         console.error('Error clearing strokes:', error);
+        // Provide more detailed error information in console
+        if (error instanceof Error) {
+            console.error(`Details: ${error.message}`);
+        }
     }
 };
 
@@ -222,6 +226,9 @@ export function useRealtimeCollaboration(
                 // Clear any partial strokes
                 setRemotePartialStrokes([]);
                 processedPartialStrokeIds.current.clear();
+                
+                // Also clear all completed strokes
+                setRemoteStrokes([]);
             })
             // Handle presence state changes
             .on('presence', { event: 'sync' }, () => {
@@ -354,7 +361,11 @@ export function useRealtimeCollaboration(
             });
             
             // Clear all strokes from the database
-            clearAllStrokes(supabase, roomId);
+            clearAllStrokes(supabase, roomId)
+                .catch(error => {
+                    console.error('Failed to clear canvas:', error);
+                    // Optionally notify the user about the error
+                });
         }
     }, [channel, isConnected, userId, supabase, roomId]);
 

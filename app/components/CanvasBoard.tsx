@@ -265,6 +265,15 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         highestSequence.current.clear();
     }, []);
 
+    // New effect to detect when canvas should be cleared due to remote clear action
+    useEffect(() => {
+        // Check if remoteStrokes went from having strokes to being empty
+        if (remoteStrokes.length === 0 && !isDrawing) {
+            // This could indicate a remote clear action
+            clearCanvasFunc();
+        }
+    }, [remoteStrokes.length, clearCanvasFunc, isDrawing]);
+
     const getCoordinates = (
         e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
         canvas: HTMLCanvasElement
