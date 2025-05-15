@@ -66,6 +66,9 @@ export default function CanvasDemoPage() {
         cursorSyncInterval: syncInterval
     });
 
+    // Determine if the canvas should be disabled
+    const isCanvasDisabled = connectionStatus !== 'connected';
+
     // Update loading state when strokes are loaded
     useEffect(() => {
         // If we have remote strokes or we're fully connected, stop loading
@@ -84,6 +87,9 @@ export default function CanvasDemoPage() {
 
     // Clear canvas function to pass to Toolbar
     const clearCanvas = useCallback(() => {
+        // Don't allow clearing if not connected
+        if (isCanvasDisabled) return;
+
         // Use the ref to clear the canvas
         if (canvasBoardRef.current) {
             canvasBoardRef.current.clearCanvas();
@@ -94,7 +100,7 @@ export default function CanvasDemoPage() {
 
         // Broadcast clear canvas event
         sendClearCanvas();
-    }, [sendClearCanvas, clearRemotePartialStrokes]);
+    }, [sendClearCanvas, clearRemotePartialStrokes, isCanvasDisabled]);
 
     // Handler for sync interval changes
     const handleSyncIntervalChange = useCallback((interval: number) => {
@@ -183,6 +189,7 @@ export default function CanvasDemoPage() {
                 clearCanvas={clearCanvas}
                 syncInterval={syncInterval}
                 setSyncInterval={handleSyncIntervalChange}
+                disabled={isCanvasDisabled}
             />
 
             <div className="relative">
@@ -201,6 +208,7 @@ export default function CanvasDemoPage() {
                     remotePartialStrokes={remotePartialStrokes}
                     remoteCursors={remoteCursors}
                     syncInterval={syncInterval}
+                    disabled={isCanvasDisabled}
                 />
 
                 {isLoadingStrokes && (
@@ -218,12 +226,36 @@ export default function CanvasDemoPage() {
                         </div>
                     </div>
                 )}
+
+                {isCanvasDisabled && !isLoadingStrokes && (
+                    <div
+                        className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70"
+                        style={{ zIndex: 10 }}
+                    >
+                        <div className="text-center p-4 bg-white rounded-lg shadow-lg">
+                            <svg className="h-10 w-10 text-yellow-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <p className="text-lg font-medium">Connection required</p>
+                            <p className="text-sm text-gray-500">Please wait while we establish a connection to enable drawing</p>
+                            {connectionStatus === 'disconnected' && (
+                                <button
+                                    onClick={reconnect}
+                                    className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                >
+                                    Reconnect
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="mt-4 flex gap-2">
                 <button
                     onClick={handleSaveCanvasAsImage}
-                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                    className={`px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors ${isCanvasDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={isCanvasDisabled}
                 >
                     Save as Image
                 </button>

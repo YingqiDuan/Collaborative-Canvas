@@ -55,6 +55,7 @@ interface CanvasBoardProps {
     remoteCursors?: CursorPosition[];
     remotePartialStrokes?: PartialStroke[]; // New prop for handling remote partial strokes
     syncInterval?: number; // New property for controlling the synchronization interval
+    disabled?: boolean; // Add disabled property to disable drawing interactions
 }
 
 const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
@@ -71,6 +72,7 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     remoteCursors = [],
     remotePartialStrokes = [],
     syncInterval = 50, // Default to 50ms if not provided
+    disabled = false,  // Default to enabled
 }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null); // Add a separate canvas for cursor rendering
@@ -335,6 +337,12 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     const startDrawing = (
         e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
     ) => {
+        // If disabled, only handle cursor movement but don't start drawing
+        if (disabled) {
+            handleCursorMove(e);
+            return;
+        }
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -362,7 +370,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         // Always notify about cursor movement
         handleCursorMove(e);
 
-        if (!isDrawing) return;
+        // If disabled or not drawing, don't continue
+        if (disabled || !isDrawing) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -391,7 +400,10 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     };
 
     const endDrawing = () => {
-        if (isDrawing && onStrokeComplete && currentStroke.length > 1) {
+        // If not drawing or disabled, do nothing
+        if (!isDrawing || disabled) return;
+
+        if (onStrokeComplete && currentStroke.length > 1) {
             const stroke: Stroke = {
                 id: currentStrokeId.current,
                 points: currentStroke,
@@ -415,7 +427,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
                 position: 'relative',
                 width: `${width}px`,
                 height: `${height}px`,
-                marginBottom: '16px' // Add space below the canvas
+                marginBottom: '16px', // Add space below the canvas
+                cursor: disabled ? 'not-allowed' : 'crosshair'
             }}
         >
             <canvas
@@ -433,12 +446,12 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
                     border: '1px solid #ccc',
                     borderRadius: '4px',
                     backgroundColor: '#ffffff',
-                    cursor: 'crosshair',
                     touchAction: 'none', // Prevents default touch actions like scrolling
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    zIndex: 1
+                    zIndex: 1,
+                    opacity: disabled ? 0.7 : 1
                 }}
             />
             <canvas

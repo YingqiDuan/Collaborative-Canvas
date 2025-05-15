@@ -12,6 +12,7 @@ interface ToolbarProps {
     clearCanvas: () => void;
     syncInterval?: number;
     setSyncInterval?: (interval: number) => void;
+    disabled?: boolean;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -23,7 +24,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setLineCap,
     clearCanvas,
     syncInterval = 50,
-    setSyncInterval
+    setSyncInterval,
+    disabled = false
 }) => {
     const [showPerformanceControls, setShowPerformanceControls] = useState(false);
 
@@ -32,7 +34,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     };
 
     return (
-        <div className="toolbar mb-4 p-4 border rounded-md bg-gray-50">
+        <div className={`toolbar mb-4 p-4 border rounded-md ${disabled ? 'bg-gray-100 opacity-75' : 'bg-gray-50'}`}>
             <div className="flex flex-wrap gap-4 mb-4">
                 <div>
                     <label htmlFor="colorPicker" className="block mb-2 font-medium">Brush Color:</label>
@@ -42,15 +44,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         value={brushColor}
                         onChange={(e) => setBrushColor(e.target.value)}
                         className="cursor-pointer w-12 h-8"
+                        disabled={disabled}
                     />
                     <div className="mt-2 flex flex-wrap gap-1">
                         {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'].map(color => (
                             <button
                                 key={color}
                                 onClick={() => setBrushColor(color)}
-                                className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
+                                className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 style={{ backgroundColor: color }}
                                 aria-label={`Select color ${color}`}
+                                disabled={disabled}
                             />
                         ))}
                     </div>
@@ -65,7 +69,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         max="30"
                         value={brushSize}
                         onChange={(e) => setBrushSize(Number(e.target.value))}
-                        className="w-48"
+                        className={`w-48 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={disabled}
                     />
                 </div>
 
@@ -74,22 +79,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     <div className="flex gap-2">
                         <button
                             onClick={() => setLineCap('butt')}
-                            className={`px-3 py-1 border rounded ${lineCap === 'butt' ? 'bg-blue-500 text-white' : 'bg-white'
-                                }`}
+                            className={`px-3 py-1 border rounded ${lineCap === 'butt' ? 'bg-blue-500 text-white' : 'bg-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={disabled}
                         >
                             Butt
                         </button>
                         <button
                             onClick={() => setLineCap('round')}
-                            className={`px-3 py-1 border rounded ${lineCap === 'round' ? 'bg-blue-500 text-white' : 'bg-white'
-                                }`}
+                            className={`px-3 py-1 border rounded ${lineCap === 'round' ? 'bg-blue-500 text-white' : 'bg-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={disabled}
                         >
                             Round
                         </button>
                         <button
                             onClick={() => setLineCap('square')}
-                            className={`px-3 py-1 border rounded ${lineCap === 'square' ? 'bg-blue-500 text-white' : 'bg-white'
-                                }`}
+                            className={`px-3 py-1 border rounded ${lineCap === 'square' ? 'bg-blue-500 text-white' : 'bg-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={disabled}
                         >
                             Square
                         </button>
@@ -99,7 +104,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 <div className="flex items-end">
                     <button
                         onClick={clearCanvas}
-                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        className={`px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={disabled}
                     >
                         Clear Canvas
                     </button>
@@ -109,7 +115,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
             <div className="border-t pt-3">
                 <button
                     onClick={togglePerformanceControls}
-                    className="flex items-center text-sm text-gray-700 hover:text-gray-900"
+                    className={`flex items-center text-sm text-gray-700 hover:text-gray-900 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={disabled}
                 >
                     <span className="mr-1">{showPerformanceControls ? '▼' : '►'}</span>
                     Performance Settings
@@ -132,7 +139,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
                                 step="5"
                                 value={syncInterval}
                                 onChange={(e) => setSyncInterval(Number(e.target.value))}
-                                className="w-full"
+                                className={`w-full ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={disabled}
                             />
                             <div className="flex justify-between text-xs text-gray-500 mt-1">
                                 <span>Smooth (10ms)</span>
