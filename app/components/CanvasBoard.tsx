@@ -58,6 +58,9 @@ interface CanvasBoardProps {
   syncInterval?: number; // New property for controlling the synchronization interval
   disabled?: boolean; // Add disabled property to disable drawing interactions
   responsive?: boolean; // New property to enable responsive mode
+  showScrollbars?: boolean; // New property to control scrollbar visibility
+  minWidth?: number; // Minimum width for fixed size canvas
+  minHeight?: number; // Minimum height for fixed size canvas
 }
 
 const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
@@ -76,10 +79,14 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   syncInterval = 50, // Default to 50ms if not provided
   disabled = false,  // Default to enabled
   responsive = true, // Default to responsive mode
+  showScrollbars = true, // Default to showing scrollbars when needed
+  minWidth = 800, // Default minimum width for fixed canvas
+  minHeight = 600, // Default minimum height for fixed canvas
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null); // Add a separate canvas for cursor rendering
   const containerRef = useRef<HTMLDivElement | null>(null); // Reference to the container div
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Reference to the scrollable container
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
@@ -92,6 +99,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   const recentClearOperation = useRef<boolean>(false);
   // Track canvas dimensions for responsive mode
   const [canvasDimensions, setCanvasDimensions] = useState({ width, height });
+  // Track if we need to use scrollbars (when canvas is larger than container)
+  const [needsScrollbars, setNeedsScrollbars] = useState(false);
 
   // Track processed remote strokes to avoid duplicates
   const processedPartialStrokeIds = useRef<Set<string>>(new Set());
@@ -103,17 +112,33 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
 
   // Function to resize canvas based on container size
   const resizeCanvas = useCallback(() => {
-    if (!responsive || !containerRef.current) return;
+    if (!containerRef.current) return;
 
     const container = containerRef.current;
     const containerWidth = container.clientWidth;
     // Use a reasonable height based on screen size
     const containerHeight = Math.min(window.innerHeight * 0.7, containerWidth * 0.75);
 
-    setCanvasDimensions({
-      width: containerWidth,
-      height: containerHeight
-    });
+    if (responsive) {
+      // In responsive mode, fit canvas to container
+      setCanvasDimensions({
+        width: containerWidth,
+        height: containerHeight
+      });
+      setNeedsScrollbars(false);
+    } else {
+      // In fixed size mode, use fixed dimensions and possibly show scrollbars
+      const fixedWidth = Math.max(minWidth, width);
+      const fixedHeight = Math.max(minHeight, height);
+
+      setCanvasDimensions({
+        width: fixedWidth,
+        height: fixedHeight
+      });
+
+      // Determine if scrollbars are needed
+      setNeedsScrollbars(showScrollbars && (fixedWidth > containerWidth || fixedHeight > containerHeight));
+    }
 
     // Redraw canvas content after resize if necessary
     if (remoteStrokes.length > 0 && canvasRef.current) {
@@ -144,26 +169,24 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         }, 0);
       }
     }
-  }, [responsive, remoteStrokes]);
+  }, [responsive, remoteStrokes, width, height, minWidth, minHeight, showScrollbars]);
 
   // Listen for window resize events
   useEffect(() => {
-    if (responsive) {
-      const handleResize = () => {
-        resizeCanvas();
-      };
-
-      // Initial resize
+    const handleResize = () => {
       resizeCanvas();
+    };
 
-      // Add event listener
-      window.addEventListener('resize', handleResize);
+    // Initial resize
+    resizeCanvas();
 
-      // Clean up
-      return () => {
-        window.removeEventListener('resize', handleResize);
-      };
-    }
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [responsive, resizeCanvas]);
 
   // Expose methods to parent component
@@ -406,17 +429,18 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
 
     // For mouse events
     if ('clientX' in e) {
+      // Calculate the coordinates relative to the canvas, accounting for scroll
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: e.clientX - rect.left + (scrollContainerRef.current?.scrollLeft || 0),
+        y: e.clientY - rect.top + (scrollContainerRef.current?.scrollTop || 0)
       };
     }
 
     // For touch events
     if (e.touches.length > 0) {
       return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
+        x: e.touches[0].clientX - rect.left + (scrollContainerRef.current?.scrollLeft || 0),
+        y: e.touches[0].clientY - rect.top + (scrollContainerRef.current?.scrollTop || 0)
       };
     }
 
@@ -561,46 +585,58 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         marginBottom: '16px', // Add space below the canvas
       }}
     >
-      <canvas
-        ref={canvasRef}
-        width={canvasDimensions.width}
-        height={canvasDimensions.height}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={endDrawing}
-        onMouseLeave={endDrawing}
-        onTouchStart={startDrawing}
-        onTouchMove={draw}
-        onTouchEnd={endDrawing}
+      {/* Scrollable container when needed */}
+      <div
+        ref={scrollContainerRef}
         style={{
-          border: '1px solid #ccc',
+          width: '100%',
+          height: responsive ? 'auto' : `${Math.min(window.innerHeight * 0.7, canvasDimensions.width * 0.75)}px`,
+          overflow: needsScrollbars ? 'auto' : 'hidden',
+          position: 'relative',
           borderRadius: '4px',
-          backgroundColor: '#ffffff',
-          touchAction: 'none', // Prevents default touch actions like scrolling
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          zIndex: 1,
-          opacity: disabled ? 0.7 : 1,
-          maxWidth: '100%',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
         }}
-      />
-      <canvas
-        ref={cursorCanvasRef}
-        width={canvasDimensions.width}
-        height={canvasDimensions.height}
-        style={{
-          borderRadius: '4px',
-          backgroundColor: 'transparent',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          zIndex: 2,
-          pointerEvents: 'none', // Makes sure pointer events pass through to the drawing canvas
-          maxWidth: '100%'
-        }}
-      />
+      >
+        <div style={{ width: canvasDimensions.width, height: canvasDimensions.height, position: 'relative' }}>
+          <canvas
+            ref={canvasRef}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseLeave={endDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={endDrawing}
+            style={{
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              backgroundColor: '#ffffff',
+              touchAction: 'none', // Prevents default touch actions like scrolling
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 1,
+              opacity: disabled ? 0.7 : 1,
+            }}
+          />
+          <canvas
+            ref={cursorCanvasRef}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
+            style={{
+              borderRadius: '4px',
+              backgroundColor: 'transparent',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 2,
+              pointerEvents: 'none', // Makes sure pointer events pass through to the drawing canvas
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 });

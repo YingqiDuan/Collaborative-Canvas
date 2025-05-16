@@ -45,6 +45,12 @@ export default function CanvasDemoPage() {
   // Performance settings
   const [syncInterval, setSyncInterval] = useState<number>(50);
 
+  // Canvas display settings
+  const [canvasResponsive, setCanvasResponsive] = useState<boolean>(true);
+  const [showScrollbars, setShowScrollbars] = useState<boolean>(true);
+  const [canvasFixedWidth, setCanvasFixedWidth] = useState<number>(1200);
+  const [canvasFixedHeight, setCanvasFixedHeight] = useState<number>(800);
+
   // Reference to the canvas board
   const canvasBoardRef = useRef<CanvasBoardRef>(null);
 
@@ -160,6 +166,38 @@ export default function CanvasDemoPage() {
     setShowMobileInfo(!showMobileInfo);
   };
 
+  // Toggle canvas responsive mode
+  const toggleCanvasResponsive = useCallback(() => {
+    setCanvasResponsive(prev => !prev);
+    // When switching to responsive mode, trigger resize on the canvas
+    if (!canvasResponsive && canvasBoardRef.current) {
+      setTimeout(() => {
+        canvasBoardRef.current?.resizeCanvas();
+      }, 0);
+    }
+  }, [canvasResponsive]);
+
+  // Toggle scrollbars visibility
+  const toggleScrollbars = useCallback(() => {
+    setShowScrollbars(prev => !prev);
+  }, []);
+
+  // Handle canvas fixed size changes
+  const handleCanvasFixedSizeChange = useCallback((dimension: 'width' | 'height', value: number) => {
+    if (dimension === 'width') {
+      setCanvasFixedWidth(value);
+    } else {
+      setCanvasFixedHeight(value);
+    }
+
+    // Trigger canvas resize after changing dimensions
+    if (canvasBoardRef.current) {
+      setTimeout(() => {
+        canvasBoardRef.current?.resizeCanvas();
+      }, 0);
+    }
+  }, []);
+
   return (
     <div className="max-w-full">
       {/* Header Section - Responsive */}
@@ -191,8 +229,8 @@ export default function CanvasDemoPage() {
 
             {/* Desktop Status Indicators */}
             <div className={`px-3 py-1 rounded-full text-sm ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
-                connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
+              connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
               }`}>
               {connectionStatus === 'connected' ? 'Connected' :
                 connectionStatus === 'connecting' ? 'Connecting...' :
@@ -232,8 +270,8 @@ export default function CanvasDemoPage() {
 
             <div className="flex flex-wrap gap-2 mt-2">
               <div className={`px-3 py-1 rounded-full text-sm ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
-                  connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
+                connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
                 }`}>
                 {connectionStatus === 'connected' ? 'Connected' :
                   connectionStatus === 'connecting' ? 'Connecting...' :
@@ -294,6 +332,80 @@ export default function CanvasDemoPage() {
           setToolMode={setToolMode}
         />
 
+        {/* Canvas Size Controls */}
+        <div className="mb-4 p-4 border rounded-md shadow-sm bg-gray-50">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-medium">Canvas Size Settings</h3>
+            <div className="flex items-center space-x-4">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={canvasResponsive}
+                  onChange={toggleCanvasResponsive}
+                  className="form-checkbox h-4 w-4 text-blue-600"
+                />
+                <span className="ml-2 text-sm">Responsive</span>
+              </label>
+
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showScrollbars}
+                  onChange={toggleScrollbars}
+                  disabled={canvasResponsive}
+                  className={`form-checkbox h-4 w-4 ${canvasResponsive ? 'text-gray-400' : 'text-blue-600'}`}
+                />
+                <span className={`ml-2 text-sm ${canvasResponsive ? 'text-gray-400' : ''}`}>Show Scrollbars</span>
+              </label>
+            </div>
+          </div>
+
+          {!canvasResponsive && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+              <div>
+                <label htmlFor="canvasWidth" className="block text-sm font-medium mb-1">
+                  Width: {canvasFixedWidth}px
+                </label>
+                <div className="flex items-center">
+                  <input
+                    id="canvasWidth"
+                    type="range"
+                    min="800"
+                    max="3000"
+                    step="100"
+                    value={canvasFixedWidth}
+                    onChange={(e) => handleCanvasFixedSizeChange('width', parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="canvasHeight" className="block text-sm font-medium mb-1">
+                  Height: {canvasFixedHeight}px
+                </label>
+                <div className="flex items-center">
+                  <input
+                    id="canvasHeight"
+                    type="range"
+                    min="600"
+                    max="2000"
+                    step="100"
+                    value={canvasFixedHeight}
+                    onChange={(e) => handleCanvasFixedSizeChange('height', parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-gray-500 mt-2">
+            {canvasResponsive
+              ? "Responsive mode: Canvas adjusts to fit your screen."
+              : "Fixed size mode: Canvas maintains its dimensions with scrollbars when necessary."}
+          </div>
+        </div>
+
         <div className="w-full relative">
           <CanvasBoard
             ref={canvasBoardRef}
@@ -309,7 +421,12 @@ export default function CanvasDemoPage() {
             remoteCursors={remoteCursors}
             syncInterval={syncInterval}
             disabled={isCanvasDisabled}
-            responsive={true}
+            responsive={canvasResponsive}
+            showScrollbars={showScrollbars}
+            minWidth={canvasFixedWidth}
+            minHeight={canvasFixedHeight}
+            width={canvasFixedWidth}
+            height={canvasFixedHeight}
           />
 
           {isLoadingStrokes && (
