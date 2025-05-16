@@ -13,6 +13,8 @@ interface ToolbarProps {
   syncInterval?: number;
   setSyncInterval?: (interval: number) => void;
   disabled?: boolean;
+  toolMode?: 'brush' | 'eraser';
+  setToolMode?: (mode: 'brush' | 'eraser') => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -25,7 +27,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
   clearCanvas,
   syncInterval = 50,
   setSyncInterval,
-  disabled = false
+  disabled = false,
+  toolMode,
+  setToolMode
 }) => {
   const [showPerformanceControls, setShowPerformanceControls] = useState(false);
 
@@ -35,6 +39,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <div className={`toolbar mb-4 p-4 border rounded-md ${disabled ? 'bg-gray-100 opacity-75' : 'bg-gray-50'}`}>
+      {/* Tool selector */}
+      <div className="mb-4 flex items-center gap-2">
+        <span className="font-medium">Tool:</span>
+        {(['brush', 'eraser'] as const).map(mode => (
+          <button
+            key={mode}
+            onClick={() => setToolMode && setToolMode(mode)}
+            disabled={disabled}
+            className={`px-3 py-1 border rounded ${toolMode === mode ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100'
+              }`}
+          >
+            {mode === 'brush' ? 'Pencil' : 'Eraser'}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap gap-4 mb-4">
         <div>
           <label htmlFor="colorPicker" className="block mb-2 font-medium">Brush Color:</label>

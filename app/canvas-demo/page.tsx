@@ -34,8 +34,9 @@ export default function CanvasDemoPage() {
     setUserColor(generateUserColor());
   }, []);
 
-  // Drawing configuration
+  // Tool configuration
   const [brushColor, setBrushColor] = useState('#000000');
+  const [toolMode, setToolMode] = useState<'brush' | 'eraser'>('brush');
   const [brushSize, setBrushSize] = useState(3);
   const [lineCap, setLineCap] = useState<LineCapStyle>('round');
 
@@ -130,6 +131,9 @@ export default function CanvasDemoPage() {
     }
   }, [userName]);
 
+  // If eraser is active, paint in white
+  const effectiveBrushColor = toolMode === 'eraser' ? '#ffffff' : brushColor;
+
   // Handle user name change
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserName(e.target.value);
@@ -202,6 +206,8 @@ export default function CanvasDemoPage() {
         syncInterval={syncInterval}
         setSyncInterval={handleSyncIntervalChange}
         disabled={isCanvasDisabled}
+        toolMode={toolMode}
+        setToolMode={setToolMode}
       />
 
       <div className="relative">
@@ -209,7 +215,7 @@ export default function CanvasDemoPage() {
           ref={canvasBoardRef}
           width={800}
           height={600}
-          brushColor={brushColor}
+          brushColor={effectiveBrushColor}
           brushSize={brushSize}
           lineCap={lineCap}
           userId={userId}
