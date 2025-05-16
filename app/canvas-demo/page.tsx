@@ -3,9 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import CanvasBoard, {
-  CanvasBoardRef,
-} from '../components/CanvasBoard';
+import CanvasBoard, { Stroke, CursorPosition, CanvasBoardRef, PartialStroke } from '../components/CanvasBoard';
 import Toolbar from '../components/Toolbar';
 import { saveImageFromDataURL } from '../utils/canvasUtils';
 import { useRealtimeCollaboration, generateUserColor } from '../utils/realtimeUtils';
@@ -40,7 +38,6 @@ export default function CanvasDemoPage() {
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [lineCap, setLineCap] = useState<LineCapStyle>('round');
-  const [isEraser, setIsEraser] = useState(false);
 
   // Performance settings
   const [syncInterval, setSyncInterval] = useState<number>(50);
@@ -62,13 +59,13 @@ export default function CanvasDemoPage() {
     sendClearCanvas,
     reconnect,
     clearRemotePartialStrokes,
-    setCursorSyncInterval,
+    setCursorSyncInterval
   } = useRealtimeCollaboration(supabase, {
     userId,
     userName,
     userColor,
     roomId: ROOM_ID,
-    cursorSyncInterval: syncInterval,
+    cursorSyncInterval: syncInterval
   });
 
   // Determine if the canvas should be disabled - with exception for just cleared state
@@ -144,9 +141,7 @@ export default function CanvasDemoPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div>
-          <label htmlFor="userName" className="block mb-2 font-medium">
-            Your Name:
-          </label>
+          <label htmlFor="userName" className="block mb-2 font-medium">Your Name:</label>
           <input
             id="userName"
             type="text"
@@ -156,20 +151,13 @@ export default function CanvasDemoPage() {
             placeholder="Enter your name"
           />
         </div>
-        <div
-          className={`px-3 py-2 rounded-full ${connectionStatus === 'connected'
-            ? 'bg-green-100 text-green-800'
-            : connectionStatus === 'connecting'
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-red-100 text-red-800'
-            }`}
-        >
-          Status:{' '}
-          {connectionStatus === 'connected'
-            ? 'Connected'
-            : connectionStatus === 'connecting'
-              ? 'Connecting...'
-              : 'Disconnected'}
+        <div className={`px-3 py-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
+          connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+          Status: {connectionStatus === 'connected' ? 'Connected' :
+            connectionStatus === 'connecting' ? 'Connecting...' :
+              'Disconnected'}
           {connectionStatus === 'disconnected' && (
             <button
               onClick={reconnect}
@@ -186,30 +174,17 @@ export default function CanvasDemoPage() {
           className="px-3 py-2 rounded-full flex items-center gap-2"
           style={{ backgroundColor: `${userColor}20` }}
         >
-          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: userColor }}></div>
+          <div
+            className="w-4 h-4 rounded-full"
+            style={{ backgroundColor: userColor }}
+          ></div>
           <span>Your cursor color</span>
         </div>
         {isLoadingStrokes && (
           <div className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full flex items-center gap-2">
-            <svg
-              className="animate-spin h-4 w-4 text-purple-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
+            <svg className="animate-spin h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <span>Loading drawings...</span>
           </div>
@@ -227,8 +202,6 @@ export default function CanvasDemoPage() {
         syncInterval={syncInterval}
         setSyncInterval={handleSyncIntervalChange}
         disabled={isCanvasDisabled}
-        isEraser={isEraser}
-        setIsEraser={setIsEraser}
       />
 
       <div className="relative">
@@ -248,7 +221,6 @@ export default function CanvasDemoPage() {
           remoteCursors={remoteCursors}
           syncInterval={syncInterval}
           disabled={isCanvasDisabled}
-          isEraser={isEraser}
         />
 
         {isLoadingStrokes && (
@@ -257,30 +229,12 @@ export default function CanvasDemoPage() {
             style={{ zIndex: 10 }}
           >
             <div className="text-center p-4 bg-white rounded-lg shadow-lg">
-              <svg
-                className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-2"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
+              <svg className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               <p className="text-lg font-medium">Loading previous drawings...</p>
-              <p className="text-sm text-gray-500">
-                Please wait while we retrieve the canvas history
-              </p>
+              <p className="text-sm text-gray-500">Please wait while we retrieve the canvas history</p>
             </div>
           </div>
         )}
@@ -291,24 +245,11 @@ export default function CanvasDemoPage() {
             style={{ zIndex: 10 }}
           >
             <div className="text-center p-4 bg-white rounded-lg shadow-lg">
-              <svg
-                className="h-10 w-10 text-yellow-500 mx-auto mb-2"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
+              <svg className="h-10 w-10 text-yellow-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <p className="text-lg font-medium">Connection required</p>
-              <p className="text-sm text-gray-500">
-                Please wait while we establish a connection to enable drawing
-              </p>
+              <p className="text-sm text-gray-500">Please wait while we establish a connection to enable drawing</p>
               {connectionStatus === 'disconnected' && (
                 <button
                   onClick={reconnect}
@@ -337,15 +278,13 @@ export default function CanvasDemoPage() {
           Connected users will see your drawings and cursor movements in real-time.
         </p>
         <p className="text-sm text-gray-600 mt-1">
-          <strong>Note:</strong> You need to set up your own Supabase project and add the URL and
-          anon key to the .env.local file to enable real-time collaboration. Follow the Supabase
-          setup instructions in the README.
+          <strong>Note:</strong> You need to set up your own Supabase project and add the URL and anon key to the .env.local file
+          to enable real-time collaboration. Follow the Supabase setup instructions in the README.
         </p>
         <p className="text-sm text-gray-600 mt-1">
-          <strong>New Feature:</strong> Drawing history is now saved! When new users connect,
-          they&apos;ll see all previous drawings.
+          <strong>New Feature:</strong> Drawing history is now saved! When new users connect, they'll see all previous drawings.
         </p>
       </div>
     </div>
   );
-}
+} 

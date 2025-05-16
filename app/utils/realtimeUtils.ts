@@ -1,8 +1,6 @@
-import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CursorPosition, Stroke, PartialStroke } from '../components/CanvasBoard';
-
-/* eslint-disable react-hooks/exhaustive-deps */
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Stroke, CursorPosition, PartialStroke } from '../components/CanvasBoard';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 type PresenceState = Record<string, { userId: string; username: string; online_at: string; cursorColor?: string; }[]>;
@@ -16,7 +14,7 @@ interface RealtimeHookOptions {
 }
 
 interface RealtimeHookResult {
-    channel: RealtimeChannel | null;
+    channel: any;
     isConnected: boolean;
     connectionStatus: ConnectionStatus;
     onlineUsers: number;
@@ -51,7 +49,6 @@ const saveStrokeToDatabase = async (supabase: SupabaseClient, stroke: Stroke, ro
             brush_color: stroke.brushColor,
             brush_size: stroke.brushSize,
             line_cap: stroke.lineCap,
-            is_eraser: stroke.isEraser || false,
             created_at: new Date().toISOString()
         });
         console.log('Stroke saved to database:', stroke.id);
@@ -91,8 +88,7 @@ const getAllStrokes = async (supabase: SupabaseClient, roomId: string): Promise<
             points: row.points,
             brushColor: row.brush_color,
             brushSize: row.brush_size,
-            lineCap: row.line_cap,
-            isEraser: row.is_eraser || false
+            lineCap: row.line_cap
         }));
         
         console.log(`Loaded ${strokes.length} strokes for room:`, roomId);
@@ -142,7 +138,7 @@ export function useRealtimeCollaboration(
     const { userId, userName, userColor, roomId, cursorSyncInterval = 50 } = options;
 
     // State for tracking connection and collaboration data
-    const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+    const [channel, setChannel] = useState<any>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
     const [onlineUsers, setOnlineUsers] = useState<number>(1);
@@ -235,12 +231,8 @@ export function useRealtimeCollaboration(
                 setRemoteStrokes([]);
                 
                 // 通知所有Canvas组件有清除事件发生
-                const notifyFunc = (window as Window & typeof globalThis & { 
-                    notifyCanvasClearEvent?: () => void 
-                }).notifyCanvasClearEvent;
-                
-                if (typeof window !== 'undefined' && notifyFunc) {
-                    notifyFunc();
+                if (typeof window !== 'undefined' && (window as any).notifyCanvasClearEvent) {
+                    (window as any).notifyCanvasClearEvent();
                 }
                 
                 // Make sure we don't affect connection status
@@ -271,10 +263,10 @@ export function useRealtimeCollaboration(
                     });
                 });
             })
-            .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string, newPresences: { userId: string; username: string; online_at: string; cursorColor?: string; }[] }) => {
+            .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string, newPresences: any[] }) => {
                 console.log('User joined:', key, newPresences);
             })
-            .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string, leftPresences: { userId: string; username: string; online_at: string; cursorColor?: string; }[] }) => {
+            .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string, leftPresences: any[] }) => {
                 console.log('User left:', key, leftPresences);
                 // Remove cursor when user leaves
                 setRemoteCursors((prevCursors) =>

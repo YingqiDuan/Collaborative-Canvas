@@ -13,8 +13,6 @@ interface ToolbarProps {
   syncInterval?: number;
   setSyncInterval?: (interval: number) => void;
   disabled?: boolean;
-  isEraser?: boolean;
-  setIsEraser?: (isEraser: boolean) => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -27,9 +25,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   clearCanvas,
   syncInterval = 50,
   setSyncInterval,
-  disabled = false,
-  isEraser = false,
-  setIsEraser,
+  disabled = false
 }) => {
   const [showPerformanceControls, setShowPerformanceControls] = useState(false);
 
@@ -38,49 +34,41 @@ const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div
-      className={`toolbar mb-4 p-4 border rounded-md ${disabled ? 'bg-gray-100 opacity-75' : 'bg-gray-50'}`}
-    >
+    <div className={`toolbar mb-4 p-4 border rounded-md ${disabled ? 'bg-gray-100 opacity-75' : 'bg-gray-50'}`}>
       <div className="flex flex-wrap gap-4 mb-4">
         <div>
-          <label htmlFor="colorPicker" className="block mb-2 font-medium">
-            Brush Color:
-          </label>
+          <label htmlFor="colorPicker" className="block mb-2 font-medium">Brush Color:</label>
           <input
             id="colorPicker"
             type="color"
             value={brushColor}
-            onChange={e => setBrushColor(e.target.value)}
+            onChange={(e) => setBrushColor(e.target.value)}
             className="cursor-pointer w-12 h-8"
-            disabled={disabled || isEraser}
+            disabled={disabled}
           />
           <div className="mt-2 flex flex-wrap gap-1">
-            {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'].map(
-              color => (
-                <button
-                  key={color}
-                  onClick={() => setBrushColor(color)}
-                  className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''} ${disabled || isEraser ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  style={{ backgroundColor: color }}
-                  aria-label={`Select color ${color}`}
-                  disabled={disabled || isEraser}
-                />
-              )
-            )}
+            {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'].map(color => (
+              <button
+                key={color}
+                onClick={() => setBrushColor(color)}
+                className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ backgroundColor: color }}
+                aria-label={`Select color ${color}`}
+                disabled={disabled}
+              />
+            ))}
           </div>
         </div>
 
         <div>
-          <label htmlFor="brushSize" className="block mb-2 font-medium">
-            Brush Size: {brushSize}px
-          </label>
+          <label htmlFor="brushSize" className="block mb-2 font-medium">Brush Size: {brushSize}px</label>
           <input
             id="brushSize"
             type="range"
             min="1"
             max="30"
             value={brushSize}
-            onChange={e => setBrushSize(Number(e.target.value))}
+            onChange={(e) => setBrushSize(Number(e.target.value))}
             className={`w-48 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={disabled}
           />
@@ -112,18 +100,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </button>
           </div>
         </div>
-
-        {setIsEraser && (
-          <div className="flex items-end">
-            <button
-              onClick={() => setIsEraser(!isEraser)}
-              className={`px-4 py-2 border rounded ${isEraser ? 'bg-blue-500 text-white' : 'bg-white'} hover:bg-blue-600 hover:text-white transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={disabled}
-            >
-              {isEraser ? 'Brush' : 'Eraser'}
-            </button>
-          </div>
-        )}
 
         <div className="flex items-end">
           <button
@@ -162,7 +138,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 max="200"
                 step="5"
                 value={syncInterval}
-                onChange={e => setSyncInterval(Number(e.target.value))}
+                onChange={(e) => setSyncInterval(Number(e.target.value))}
                 className={`w-full ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={disabled}
               />
@@ -175,9 +151,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
             <div className="mt-3 text-xs text-gray-600">
               <p>
-                <strong>Sync Interval</strong> controls how frequently partial strokes are sent
-                during drawing. Lower values provide a smoother experience but use more bandwidth
-                and server resources.
+                <strong>Sync Interval</strong> controls how frequently partial strokes are sent during drawing.
+                Lower values provide a smoother experience but use more bandwidth and server resources.
               </p>
             </div>
           </div>
@@ -187,4 +162,4 @@ const Toolbar: React.FC<ToolbarProps> = ({
   );
 };
 
-export default Toolbar;
+export default Toolbar; 
