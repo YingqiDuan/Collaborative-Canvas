@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Stroke, CursorPosition, PartialStroke } from '../components/CanvasBoard';
+import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CursorPosition, Stroke, PartialStroke } from '../components/CanvasBoard';
+
+/* eslint-disable react-hooks/exhaustive-deps */
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 type PresenceState = Record<string, { userId: string; username: string; online_at: string; cursorColor?: string; }[]>;
@@ -14,7 +16,7 @@ interface RealtimeHookOptions {
 }
 
 interface RealtimeHookResult {
-    channel: any;
+    channel: RealtimeChannel | null;
     isConnected: boolean;
     connectionStatus: ConnectionStatus;
     onlineUsers: number;
@@ -140,7 +142,7 @@ export function useRealtimeCollaboration(
     const { userId, userName, userColor, roomId, cursorSyncInterval = 50 } = options;
 
     // State for tracking connection and collaboration data
-    const [channel, setChannel] = useState<any>(null);
+    const [channel, setChannel] = useState<RealtimeChannel | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
     const [onlineUsers, setOnlineUsers] = useState<number>(1);
@@ -233,8 +235,12 @@ export function useRealtimeCollaboration(
                 setRemoteStrokes([]);
                 
                 // 通知所有Canvas组件有清除事件发生
-                if (typeof window !== 'undefined' && (window as any).notifyCanvasClearEvent) {
-                    (window as any).notifyCanvasClearEvent();
+                const notifyFunc = (window as Window & typeof globalThis & { 
+                    notifyCanvasClearEvent?: () => void 
+                }).notifyCanvasClearEvent;
+                
+                if (typeof window !== 'undefined' && notifyFunc) {
+                    notifyFunc();
                 }
                 
                 // Make sure we don't affect connection status
@@ -265,10 +271,10 @@ export function useRealtimeCollaboration(
                     });
                 });
             })
-            .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string, newPresences: any[] }) => {
+            .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string, newPresences: { userId: string; username: string; online_at: string; cursorColor?: string; }[] }) => {
                 console.log('User joined:', key, newPresences);
             })
-            .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string, leftPresences: any[] }) => {
+            .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string, leftPresences: { userId: string; username: string; online_at: string; cursorColor?: string; }[] }) => {
                 console.log('User left:', key, leftPresences);
                 // Remove cursor when user leaves
                 setRemoteCursors((prevCursors) =>

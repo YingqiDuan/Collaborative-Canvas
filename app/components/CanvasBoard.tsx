@@ -340,13 +340,13 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // 将函数挂载到window对象，以便其他组件可以访问
-      (window as any).notifyCanvasClearEvent = () => {
+      (window as Window & typeof globalThis & { notifyCanvasClearEvent?: () => void }).notifyCanvasClearEvent = () => {
         setReceivedClearEvent(true);
       };
     }
     return () => {
       if (typeof window !== 'undefined') {
-        delete (window as any).notifyCanvasClearEvent;
+        delete (window as Window & typeof globalThis & { notifyCanvasClearEvent?: () => void }).notifyCanvasClearEvent;
       }
     };
   }, []);
