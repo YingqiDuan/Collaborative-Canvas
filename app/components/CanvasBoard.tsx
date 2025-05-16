@@ -39,6 +39,7 @@ export interface CursorPosition {
 export interface CanvasBoardRef {
   clearCanvas: () => void;
   getDataURL: () => string | null;
+  resizeCanvas: () => void;
 }
 
 interface CanvasBoardProps {
@@ -56,6 +57,7 @@ interface CanvasBoardProps {
   remotePartialStrokes?: PartialStroke[]; // New prop for handling remote partial strokes
   syncInterval?: number; // New property for controlling the synchronization interval
   disabled?: boolean; // Add disabled property to disable drawing interactions
+  responsive?: boolean; // New property to enable responsive mode
 }
 
 const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
@@ -73,9 +75,11 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   remotePartialStrokes = [],
   syncInterval = 50, // Default to 50ms if not provided
   disabled = false,  // Default to enabled
+  responsive = true, // Default to responsive mode
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null); // Add a separate canvas for cursor rendering
+  const containerRef = useRef<HTMLDivElement | null>(null); // Reference to the container div
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
@@ -86,6 +90,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   const lastKnownStrokeCount = useRef<number>(0);
   // Add a reference to track if a clear operation was recently performed
   const recentClearOperation = useRef<boolean>(false);
+  // Track canvas dimensions for responsive mode
+  const [canvasDimensions, setCanvasDimensions] = useState({ width, height });
 
   // Track processed remote strokes to avoid duplicates
   const processedPartialStrokeIds = useRef<Set<string>>(new Set());
@@ -95,6 +101,71 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   // 新增：监听清除事件的标志
   const [receivedClearEvent, setReceivedClearEvent] = useState(false);
 
+  // Function to resize canvas based on container size
+  const resizeCanvas = useCallback(() => {
+    if (!responsive || !containerRef.current) return;
+
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    // Use a reasonable height based on screen size
+    const containerHeight = Math.min(window.innerHeight * 0.7, containerWidth * 0.75);
+
+    setCanvasDimensions({
+      width: containerWidth,
+      height: containerHeight
+    });
+
+    // Redraw canvas content after resize if necessary
+    if (remoteStrokes.length > 0 && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Use setTimeout to ensure canvas dimensions are updated first
+        setTimeout(() => {
+          // Redraw all strokes
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          remoteStrokes.forEach(stroke => {
+            if (stroke && stroke.points.length > 0) {
+              const { points, brushColor, brushSize, lineCap } = stroke;
+              ctx.save();
+              ctx.lineWidth = brushSize;
+              ctx.strokeStyle = brushColor;
+              ctx.lineCap = lineCap;
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.moveTo(points[0].x, points[0].y);
+              for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+              }
+              ctx.stroke();
+              ctx.restore();
+            }
+          });
+        }, 0);
+      }
+    }
+  }, [responsive, remoteStrokes]);
+
+  // Listen for window resize events
+  useEffect(() => {
+    if (responsive) {
+      const handleResize = () => {
+        resizeCanvas();
+      };
+
+      // Initial resize
+      resizeCanvas();
+
+      // Add event listener
+      window.addEventListener('resize', handleResize);
+
+      // Clean up
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [responsive, resizeCanvas]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     clearCanvas: () => {
@@ -102,6 +173,9 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     },
     getDataURL: () => {
       return getCanvasDataURL(canvasRef.current);
+    },
+    resizeCanvas: () => {
+      resizeCanvas();
     }
   }));
 
@@ -481,19 +555,16 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
 
   return (
     <div
-      className="canvas-container"
+      ref={containerRef}
+      className="canvas-container relative w-full"
       style={{
-        position: 'relative',
-        width: `${width}px`,
-        height: `${height}px`,
         marginBottom: '16px', // Add space below the canvas
-        cursor: disabled ? 'not-allowed' : 'crosshair'
       }}
     >
       <canvas
         ref={canvasRef}
-        width={width}
-        height={height}
+        width={canvasDimensions.width}
+        height={canvasDimensions.height}
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={endDrawing}
@@ -510,13 +581,15 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
           top: 0,
           left: 0,
           zIndex: 1,
-          opacity: disabled ? 0.7 : 1
+          opacity: disabled ? 0.7 : 1,
+          maxWidth: '100%',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
         }}
       />
       <canvas
         ref={cursorCanvasRef}
-        width={width}
-        height={height}
+        width={canvasDimensions.width}
+        height={canvasDimensions.height}
         style={{
           borderRadius: '4px',
           backgroundColor: 'transparent',
@@ -524,7 +597,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
           top: 0,
           left: 0,
           zIndex: 2,
-          pointerEvents: 'none' // Makes sure pointer events pass through to the drawing canvas
+          pointerEvents: 'none', // Makes sure pointer events pass through to the drawing canvas
+          maxWidth: '100%'
         }}
       />
     </div>

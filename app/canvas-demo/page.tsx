@@ -28,6 +28,8 @@ export default function CanvasDemoPage() {
   const [isLoadingStrokes, setIsLoadingStrokes] = useState(true);
   // Track whether a clear canvas action just happened
   const [justCleared, setJustCleared] = useState(false);
+  // State to track mobile menu visibility
+  const [showMobileInfo, setShowMobileInfo] = useState(false);
 
   // Use useEffect to set random color only on the client side
   useEffect(() => {
@@ -45,6 +47,20 @@ export default function CanvasDemoPage() {
 
   // Reference to the canvas board
   const canvasBoardRef = useRef<CanvasBoardRef>(null);
+
+  // Add resize handler for window size changes
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasBoardRef.current) {
+        canvasBoardRef.current.resizeCanvas();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Set up real-time collaboration using our custom hook
   const {
@@ -139,53 +155,122 @@ export default function CanvasDemoPage() {
     setUserName(e.target.value);
   };
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Collaborative Canvas Demo</h1>
+  // Toggle mobile info display
+  const toggleMobileInfo = () => {
+    setShowMobileInfo(!showMobileInfo);
+  };
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div>
-          <label htmlFor="userName" className="block mb-2 font-medium">Your Name:</label>
-          <input
-            id="userName"
-            type="text"
-            value={userName}
-            onChange={handleNameChange}
-            className="px-3 py-2 border rounded w-48"
-            placeholder="Enter your name"
-          />
+  return (
+    <div className="max-w-full">
+      {/* Header Section - Responsive */}
+      <div className="px-4 py-3 md:py-4 bg-gray-100 border-b sticky top-0 z-50">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-xl md:text-2xl font-bold">Collaborative Canvas</h1>
+
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden px-2 py-1 border rounded-md"
+            onClick={toggleMobileInfo}
+          >
+            {showMobileInfo ? 'Hide Info' : 'Show Info'}
+          </button>
+
+          {/* Desktop Name Input */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center">
+              <label htmlFor="userName" className="mr-2 font-medium text-sm">Your Name:</label>
+              <input
+                id="userName"
+                type="text"
+                value={userName}
+                onChange={handleNameChange}
+                className="px-3 py-1 border rounded w-32 text-sm"
+                placeholder="Enter your name"
+              />
+            </div>
+
+            {/* Desktop Status Indicators */}
+            <div className={`px-3 py-1 rounded-full text-sm ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
+                connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+              }`}>
+              {connectionStatus === 'connected' ? 'Connected' :
+                connectionStatus === 'connecting' ? 'Connecting...' :
+                  'Disconnected'}
+              {connectionStatus === 'disconnected' && (
+                <button
+                  onClick={reconnect}
+                  className="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded"
+                >
+                  Reconnect
+                </button>
+              )}
+            </div>
+
+            <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+              Online: {onlineUsers}
+            </div>
+          </div>
         </div>
-        <div className={`px-3 py-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
-          connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
-          Status: {connectionStatus === 'connected' ? 'Connected' :
-            connectionStatus === 'connecting' ? 'Connecting...' :
-              'Disconnected'}
-          {connectionStatus === 'disconnected' && (
-            <button
-              onClick={reconnect}
-              className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded"
-            >
-              Reconnect
-            </button>
-          )}
+      </div>
+
+      {/* Mobile User Info Panel - Collapsible */}
+      {showMobileInfo && (
+        <div className="md:hidden px-4 py-3 bg-gray-50 border-b">
+          <div className="flex flex-col gap-2">
+            <div>
+              <label htmlFor="mobileUserName" className="block mb-1 font-medium text-sm">Your Name:</label>
+              <input
+                id="mobileUserName"
+                type="text"
+                value={userName}
+                onChange={handleNameChange}
+                className="px-3 py-2 border rounded w-full"
+                placeholder="Enter your name"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className={`px-3 py-1 rounded-full text-sm ${connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
+                  connectionStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                }`}>
+                {connectionStatus === 'connected' ? 'Connected' :
+                  connectionStatus === 'connecting' ? 'Connecting...' :
+                    'Disconnected'}
+                {connectionStatus === 'disconnected' && (
+                  <button
+                    onClick={reconnect}
+                    className="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded"
+                  >
+                    Reconnect
+                  </button>
+                )}
+              </div>
+
+              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                Online: {onlineUsers}
+              </div>
+
+              <div
+                className="px-3 py-1 rounded-full flex items-center gap-2 text-sm"
+                style={{ backgroundColor: `${userColor}20` }}
+              >
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: userColor }}
+                ></div>
+                <span>Your cursor</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full">
-          Online Users: {onlineUsers}
-        </div>
-        <div
-          className="px-3 py-2 rounded-full flex items-center gap-2"
-          style={{ backgroundColor: `${userColor}20` }}
-        >
-          <div
-            className="w-4 h-4 rounded-full"
-            style={{ backgroundColor: userColor }}
-          ></div>
-          <span>Your cursor color</span>
-        </div>
+      )}
+
+      <div className="container mx-auto p-2 md:p-4">
+        {/* Loading indicator */}
         {isLoadingStrokes && (
-          <div className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full flex items-center gap-2">
+          <div className="mb-4 px-3 py-2 bg-purple-100 text-purple-800 rounded-full flex items-center gap-2 text-sm">
             <svg className="animate-spin h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -193,103 +278,107 @@ export default function CanvasDemoPage() {
             <span>Loading drawings...</span>
           </div>
         )}
-      </div>
 
-      <Toolbar
-        brushColor={brushColor}
-        setBrushColor={setBrushColor}
-        brushSize={brushSize}
-        setBrushSize={setBrushSize}
-        lineCap={lineCap}
-        setLineCap={setLineCap}
-        clearCanvas={clearCanvas}
-        syncInterval={syncInterval}
-        setSyncInterval={handleSyncIntervalChange}
-        disabled={isCanvasDisabled}
-        toolMode={toolMode}
-        setToolMode={setToolMode}
-      />
-
-      <div className="relative">
-        <CanvasBoard
-          ref={canvasBoardRef}
-          width={800}
-          height={600}
-          brushColor={effectiveBrushColor}
+        <Toolbar
+          brushColor={brushColor}
+          setBrushColor={setBrushColor}
           brushSize={brushSize}
+          setBrushSize={setBrushSize}
           lineCap={lineCap}
-          userId={userId}
-          onStrokeComplete={sendCompleteStroke}
-          onPartialStroke={sendPartialStroke}
-          onCursorMove={sendCursorPosition}
-          remoteStrokes={remoteStrokes}
-          remotePartialStrokes={remotePartialStrokes}
-          remoteCursors={remoteCursors}
+          setLineCap={setLineCap}
+          clearCanvas={clearCanvas}
           syncInterval={syncInterval}
+          setSyncInterval={handleSyncIntervalChange}
           disabled={isCanvasDisabled}
+          toolMode={toolMode}
+          setToolMode={setToolMode}
         />
 
-        {isLoadingStrokes && (
-          <div
-            className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70"
-            style={{ zIndex: 10 }}
-          >
-            <div className="text-center p-4 bg-white rounded-lg shadow-lg">
-              <svg className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <p className="text-lg font-medium">Loading previous drawings...</p>
-              <p className="text-sm text-gray-500">Please wait while we retrieve the canvas history</p>
+        <div className="w-full relative">
+          <CanvasBoard
+            ref={canvasBoardRef}
+            brushColor={effectiveBrushColor}
+            brushSize={brushSize}
+            lineCap={lineCap}
+            userId={userId}
+            onStrokeComplete={sendCompleteStroke}
+            onPartialStroke={sendPartialStroke}
+            onCursorMove={sendCursorPosition}
+            remoteStrokes={remoteStrokes}
+            remotePartialStrokes={remotePartialStrokes}
+            remoteCursors={remoteCursors}
+            syncInterval={syncInterval}
+            disabled={isCanvasDisabled}
+            responsive={true}
+          />
+
+          {isLoadingStrokes && (
+            <div
+              className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70"
+              style={{ zIndex: 10 }}
+            >
+              <div className="text-center p-4 bg-white rounded-lg shadow-lg">
+                <svg className="animate-spin h-10 w-10 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-lg font-medium">Loading previous drawings...</p>
+                <p className="text-sm text-gray-500">Please wait while we retrieve the canvas history</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {isCanvasDisabled && !isLoadingStrokes && (
-          <div
-            className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70"
-            style={{ zIndex: 10 }}
-          >
-            <div className="text-center p-4 bg-white rounded-lg shadow-lg">
-              <svg className="h-10 w-10 text-yellow-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p className="text-lg font-medium">Connection required</p>
-              <p className="text-sm text-gray-500">Please wait while we establish a connection to enable drawing</p>
-              {connectionStatus === 'disconnected' && (
-                <button
-                  onClick={reconnect}
-                  className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Reconnect
-                </button>
-              )}
+          {isCanvasDisabled && !isLoadingStrokes && (
+            <div
+              className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70"
+              style={{ zIndex: 10 }}
+            >
+              <div className="text-center p-4 bg-white rounded-lg shadow-lg">
+                <svg className="h-10 w-10 text-yellow-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-lg font-medium">Connection required</p>
+                <p className="text-sm text-gray-500">Please wait while we establish a connection to enable drawing</p>
+                {connectionStatus === 'disconnected' && (
+                  <button
+                    onClick={reconnect}
+                    className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Reconnect
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="mt-4 flex gap-2">
-        <button
-          onClick={handleSaveCanvasAsImage}
-          className={`px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors ${isCanvasDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={isCanvasDisabled}
-        >
-          Save as Image
-        </button>
-      </div>
+        <div className="mt-4 flex gap-2 justify-end">
+          <button
+            onClick={handleSaveCanvasAsImage}
+            className={`px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors ${isCanvasDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isCanvasDisabled}
+          >
+            Save as Image
+          </button>
+        </div>
 
-      <div className="mt-4">
-        <p className="text-sm text-gray-600">
-          Connected users will see your drawings and cursor movements in real-time.
-        </p>
-        <p className="text-sm text-gray-600 mt-1">
-          <strong>Note:</strong> You need to set up your own Supabase project and add the URL and anon key to the .env.local file
-          to enable real-time collaboration. Follow the Supabase setup instructions in the README.
-        </p>
-        <p className="text-sm text-gray-600 mt-1">
-          <strong>New Feature:</strong> Drawing history is now saved! When new users connect, they'll see all previous drawings.
-        </p>
+        <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-md border">
+          <details>
+            <summary className="font-medium cursor-pointer">Instructions & Info</summary>
+            <div className="mt-2 space-y-2">
+              <p>
+                Connected users will see your drawings and cursor movements in real-time.
+              </p>
+              <p>
+                <strong>Note:</strong> You need to set up your own Supabase project and add the URL and anon key to the .env.local file
+                to enable real-time collaboration. Follow the Supabase setup instructions in the README.
+              </p>
+              <p>
+                <strong>New Feature:</strong> Drawing history is now saved! When new users connect, they'll see all previous drawings.
+              </p>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   );
