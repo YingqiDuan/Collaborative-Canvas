@@ -83,11 +83,60 @@ This application uses Supabase's real-time subscriptions to enable collaborative
 4. User cursors are tracked and displayed to enhance collaboration
 5. Performance settings allow optimization for different network conditions
 
+### Technical Implementation Details
+
+The real-time synchronization is built around two key components:
+
+- **CanvasBoard Component**: Handles rendering and interaction for both local and remote drawing events. It implements:
+
+  - Dual-canvas architecture (one for strokes, one for cursors)
+  - Optimistic local rendering for instant feedback
+  - Throttled partial stroke broadcasting during active drawing
+  - Sequence number tracking to handle out-of-order message delivery
+  - Remote cursor visualization with user colors
+
+- **useRealtimeCollaboration Hook**: Manages the communication layer using Supabase Realtime, including:
+  - Pub/sub message handling through Supabase Channels
+  - User presence management to track online collaborators
+  - Persistence layer integration (saving completed strokes to database)
+  - Connection state management and reconnection logic
+  - Deduplication of incoming updates to prevent rendering issues
+
+## Code Quality and Standards
+
+This project follows industry best practices for code quality:
+
+### Style and Formatting
+
+- Uses ESLint with recommended rules for React and TypeScript
+- Employs Prettier for consistent code formatting
+- Follows a component-based architecture with clean separation of concerns
+
+### TypeScript Usage
+
+- Comprehensive type definitions for all components and functions
+- Minimizes use of `any` type for better type safety
+- Interface-based contracts between components
+
+### Performance Considerations
+
+- Throttled real-time updates to prevent network flooding
+- Optimized rendering with careful management of React effects
+- Configurable sync intervals to adapt to different network conditions
+
+### Development Workflow
+
+- Run linting: `npm run lint`
+- Fix linting issues: `npm run lint:fix`
+- Format code: `npm run format`
+- Type checking: `npm run type-check`
+
 ## Troubleshooting
 
 ### No real-time updates
 
 Make sure you have:
+
 - Set up your Supabase project correctly with the provided SQL schema
 - Added the correct environment variables
 - Enabled real-time functionality in your Supabase dashboard (Project Settings > API > Real-time)
@@ -95,6 +144,7 @@ Make sure you have:
 ### Missing previous drawings
 
 If you can't see drawings made before you connected:
+
 - Check that the `canvas_strokes` table was created properly
 - Verify that RLS policies are correctly configured to allow selections
 - Check the browser console for any errors when loading existing strokes

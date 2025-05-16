@@ -1,6 +1,6 @@
 /**
  * Canvas Utility Functions
- * 
+ *
  * This file contains utility functions for canvas operations used across the application.
  * Centralizing these functions helps avoid duplication and makes maintenance easier.
  */
@@ -10,12 +10,12 @@
  * @param canvas The canvas element to clear
  */
 export const clearCanvas = (canvas: HTMLCanvasElement | null): void => {
-    if (!canvas) return;
+  if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 };
 
 /**
@@ -24,8 +24,8 @@ export const clearCanvas = (canvas: HTMLCanvasElement | null): void => {
  * @returns Data URL string or null if canvas is not available
  */
 export const getCanvasDataURL = (canvas: HTMLCanvasElement | null): string | null => {
-    if (!canvas) return null;
-    return canvas.toDataURL('image/png');
+  if (!canvas) return null;
+  return canvas.toDataURL('image/png');
 };
 
 /**
@@ -34,21 +34,21 @@ export const getCanvasDataURL = (canvas: HTMLCanvasElement | null): string | nul
  * @param filename Optional custom filename (defaults to a timestamp-based name)
  */
 export const saveCanvasAsImage = (canvas: HTMLCanvasElement | null, filename?: string): void => {
-    if (!canvas) return;
+  if (!canvas) return;
 
-    // Create a temporary link element
-    const link = document.createElement('a');
+  // Create a temporary link element
+  const link = document.createElement('a');
 
-    // Set the download attribute with a filename
-    link.download = filename || `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
+  // Set the download attribute with a filename
+  link.download = filename || `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
 
-    // Convert the canvas to a data URL
-    link.href = canvas.toDataURL('image/png');
+  // Convert the canvas to a data URL
+  link.href = canvas.toDataURL('image/png');
 
-    // Append to the document, click to download, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Append to the document, click to download, and remove
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 /**
@@ -57,19 +57,19 @@ export const saveCanvasAsImage = (canvas: HTMLCanvasElement | null, filename?: s
  * @param filename Optional custom filename (defaults to a timestamp-based name)
  */
 export const saveImageFromDataURL = (dataUrl: string | null, filename?: string): void => {
-    if (!dataUrl) return;
+  if (!dataUrl) return;
 
-    // Create a temporary link element
-    const link = document.createElement('a');
+  // Create a temporary link element
+  const link = document.createElement('a');
 
-    // Set the download attribute with a filename
-    link.download = filename || `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
+  // Set the download attribute with a filename
+  link.download = filename || `canvas-drawing-${new Date().toISOString().slice(0, 10)}.png`;
 
-    // Use the provided data URL
-    link.href = dataUrl;
+  // Use the provided data URL
+  link.href = dataUrl;
 
-    // Append to the document, click to download, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}; 
+  // Append to the document, click to download, and remove
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
