@@ -130,27 +130,31 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw the most recent remote stroke
-    const stroke = remoteStrokes[remoteStrokes.length - 1];
-    if (stroke && stroke.points.length > 0) {
-      const { points, brushColor, brushSize, lineCap } = stroke;
+    // Clear the canvas first to prevent duplicates
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.save();
-      ctx.lineWidth = brushSize;
-      ctx.strokeStyle = brushColor;
-      ctx.lineCap = lineCap;
-      ctx.lineJoin = 'round';
+    // Draw ALL remote strokes, not just the most recent one
+    remoteStrokes.forEach(stroke => {
+      if (stroke && stroke.points.length > 0) {
+        const { points, brushColor, brushSize, lineCap } = stroke;
 
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
+        ctx.save();
+        ctx.lineWidth = brushSize;
+        ctx.strokeStyle = brushColor;
+        ctx.lineCap = lineCap;
+        ctx.lineJoin = 'round';
 
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+
+        ctx.stroke();
+        ctx.restore();
       }
-
-      ctx.stroke();
-      ctx.restore();
-    }
+    });
   }, [remoteStrokes]);
 
   // New effect to handle remote partial strokes
