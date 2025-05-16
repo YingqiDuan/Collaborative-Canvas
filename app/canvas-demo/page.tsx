@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import CanvasBoard, { CanvasBoardRef } from '../components/CanvasBoard';
+import CanvasBoard, {
+  Stroke,
+  CursorPosition,
+  CanvasBoardRef,
+  PartialStroke,
+} from '../components/CanvasBoard';
 import Toolbar from '../components/Toolbar';
 import { saveImageFromDataURL } from '../utils/canvasUtils';
 import { useRealtimeCollaboration, generateUserColor } from '../utils/realtimeUtils';
@@ -155,13 +160,12 @@ export default function CanvasDemoPage() {
           />
         </div>
         <div
-          className={`px-3 py-2 rounded-full ${
-            connectionStatus === 'connected'
+          className={`px-3 py-2 rounded-full ${connectionStatus === 'connected'
               ? 'bg-green-100 text-green-800'
               : connectionStatus === 'connecting'
                 ? 'bg-yellow-100 text-yellow-800'
                 : 'bg-red-100 text-red-800'
-          }`}
+            }`}
         >
           Status:{' '}
           {connectionStatus === 'connected'
@@ -342,7 +346,7 @@ export default function CanvasDemoPage() {
         </p>
         <p className="text-sm text-gray-600 mt-1">
           <strong>New Feature:</strong> Drawing history is now saved! When new users connect,
-          they&apos;ll see all previous drawings.
+          they'll see all previous drawings.
         </p>
       </div>
     </div>
