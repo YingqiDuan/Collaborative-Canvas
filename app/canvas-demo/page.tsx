@@ -26,6 +26,8 @@ export default function CanvasDemoPage() {
     const [userColor, setUserColor] = useState('rgba(200, 200, 200, 0.7)');
     // Loading state for initial strokes
     const [isLoadingStrokes, setIsLoadingStrokes] = useState(true);
+    // Track whether a clear canvas action just happened
+    const [justCleared, setJustCleared] = useState(false);
 
     // Use useEffect to set random color only on the client side
     useEffect(() => {
@@ -36,6 +38,7 @@ export default function CanvasDemoPage() {
     const [brushColor, setBrushColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(3);
     const [lineCap, setLineCap] = useState<LineCapStyle>('round');
+    const [isEraser, setIsEraser] = useState(false);
 
     // Performance settings
     const [syncInterval, setSyncInterval] = useState<number>(50);
@@ -66,8 +69,8 @@ export default function CanvasDemoPage() {
         cursorSyncInterval: syncInterval
     });
 
-    // Determine if the canvas should be disabled
-    const isCanvasDisabled = connectionStatus !== 'connected';
+    // Determine if the canvas should be disabled - with exception for just cleared state
+    const isCanvasDisabled = connectionStatus !== 'connected' && !justCleared;
 
     // Update loading state when strokes are loaded
     useEffect(() => {
@@ -79,6 +82,13 @@ export default function CanvasDemoPage() {
             return () => clearTimeout(timer);
         }
     }, [remoteStrokes, isConnected, connectionStatus]);
+
+    // Reset justCleared state when new strokes are added
+    useEffect(() => {
+        if (remoteStrokes.length > 0 && justCleared) {
+            setJustCleared(false);
+        }
+    }, [remoteStrokes.length, justCleared]);
 
     // Update cursor sync interval when syncInterval changes
     useEffect(() => {
@@ -97,6 +107,9 @@ export default function CanvasDemoPage() {
 
         // Clear partial strokes tracking
         clearRemotePartialStrokes();
+
+        // Set the justCleared flag to allow drawing after clear
+        setJustCleared(true);
 
         // Broadcast clear canvas event
         sendClearCanvas();
@@ -190,6 +203,8 @@ export default function CanvasDemoPage() {
                 syncInterval={syncInterval}
                 setSyncInterval={handleSyncIntervalChange}
                 disabled={isCanvasDisabled}
+                isEraser={isEraser}
+                setIsEraser={setIsEraser}
             />
 
             <div className="relative">
@@ -209,6 +224,7 @@ export default function CanvasDemoPage() {
                     remoteCursors={remoteCursors}
                     syncInterval={syncInterval}
                     disabled={isCanvasDisabled}
+                    isEraser={isEraser}
                 />
 
                 {isLoadingStrokes && (

@@ -49,6 +49,7 @@ const saveStrokeToDatabase = async (supabase: SupabaseClient, stroke: Stroke, ro
             brush_color: stroke.brushColor,
             brush_size: stroke.brushSize,
             line_cap: stroke.lineCap,
+            is_eraser: stroke.isEraser || false,
             created_at: new Date().toISOString()
         });
         console.log('Stroke saved to database:', stroke.id);
@@ -88,7 +89,8 @@ const getAllStrokes = async (supabase: SupabaseClient, roomId: string): Promise<
             points: row.points,
             brushColor: row.brush_color,
             brushSize: row.brush_size,
-            lineCap: row.line_cap
+            lineCap: row.line_cap,
+            isEraser: row.is_eraser || false
         }));
         
         console.log(`Loaded ${strokes.length} strokes for room:`, roomId);
@@ -229,6 +231,19 @@ export function useRealtimeCollaboration(
                 
                 // Also clear all completed strokes
                 setRemoteStrokes([]);
+                
+                // 通知所有Canvas组件有清除事件发生
+                if (typeof window !== 'undefined' && (window as any).notifyCanvasClearEvent) {
+                    (window as any).notifyCanvasClearEvent();
+                }
+                
+                // Make sure we don't affect connection status
+                // If we're already connected, stay connected
+                if (connectionStatus === 'disconnected') {
+                    // Only try to reconnect if we're disconnected
+                    console.log('Attempting to reconnect after clear event');
+                    setConnectionStatus('connecting');
+                }
             })
             // Handle presence state changes
             .on('presence', { event: 'sync' }, () => {

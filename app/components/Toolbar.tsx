@@ -13,6 +13,8 @@ interface ToolbarProps {
     syncInterval?: number;
     setSyncInterval?: (interval: number) => void;
     disabled?: boolean;
+    isEraser?: boolean;
+    setIsEraser?: (isEraser: boolean) => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -25,7 +27,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
     clearCanvas,
     syncInterval = 50,
     setSyncInterval,
-    disabled = false
+    disabled = false,
+    isEraser = false,
+    setIsEraser
 }) => {
     const [showPerformanceControls, setShowPerformanceControls] = useState(false);
 
@@ -44,17 +48,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         value={brushColor}
                         onChange={(e) => setBrushColor(e.target.value)}
                         className="cursor-pointer w-12 h-8"
-                        disabled={disabled}
+                        disabled={disabled || isEraser}
                     />
                     <div className="mt-2 flex flex-wrap gap-1">
                         {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'].map(color => (
                             <button
                                 key={color}
                                 onClick={() => setBrushColor(color)}
-                                className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-6 h-6 rounded-full ${brushColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''} ${(disabled || isEraser) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 style={{ backgroundColor: color }}
                                 aria-label={`Select color ${color}`}
-                                disabled={disabled}
+                                disabled={disabled || isEraser}
                             />
                         ))}
                     </div>
@@ -100,6 +104,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         </button>
                     </div>
                 </div>
+
+                {setIsEraser && (
+                    <div className="flex items-end">
+                        <button
+                            onClick={() => setIsEraser(!isEraser)}
+                            className={`px-4 py-2 border rounded ${isEraser ? 'bg-blue-500 text-white' : 'bg-white'} hover:bg-blue-600 hover:text-white transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={disabled}
+                        >
+                            {isEraser ? 'Brush' : 'Eraser'}
+                        </button>
+                    </div>
+                )}
 
                 <div className="flex items-end">
                     <button

@@ -14,6 +14,7 @@ export interface Stroke {
     brushSize: number;
     lineCap: CanvasLineCap;
     userId: string;
+    isEraser?: boolean; // Add isEraser property
 }
 
 // New interface for partial strokes during ongoing drawing
@@ -26,6 +27,7 @@ export interface PartialStroke {
     userId: string;
     timestamp: number;
     sequence: number;
+    isEraser?: boolean; // Add isEraser property
 }
 
 export interface CursorPosition {
@@ -56,6 +58,7 @@ interface CanvasBoardProps {
     remotePartialStrokes?: PartialStroke[]; // New prop for handling remote partial strokes
     syncInterval?: number; // New property for controlling the synchronization interval
     disabled?: boolean; // Add disabled property to disable drawing interactions
+    isEraser?: boolean; // Add isEraser property
 }
 
 const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
@@ -73,20 +76,32 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     remotePartialStrokes = [],
     syncInterval = 50, // Default to 50ms if not provided
     disabled = false,  // Default to enabled
+    isEraser = false,  // Default to brush mode
 }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null); // Add a separate canvas for cursor rendering
+    const customCursorRef = useRef<HTMLDivElement | null>(null); // Add ref for custom cursor
     const [isDrawing, setIsDrawing] = useState(false);
     const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
     const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
     const currentStrokeId = useRef<string>('');
     const sequenceNumber = useRef<number>(0);
     const lastPartialStrokeSentTimeRef = useRef<number>(0);
+    // Add a reference to track the last known stroke count
+    const lastKnownStrokeCount = useRef<number>(0);
+    // Add a reference to track if a clear operation was recently performed
+    const recentClearOperation = useRef<boolean>(false);
 
     // Track processed remote strokes to avoid duplicates
     const processedPartialStrokeIds = useRef<Set<string>>(new Set());
     // Map to keep track of the highest sequence number processed for each strokeId
     const highestSequence = useRef<Map<string, number>>(new Map());
+
+    // 新增：监听清除事件的标志
+    const [receivedClearEvent, setReceivedClearEvent] = useState(false);
+
+    // Add state to track mouse position for custom cursor
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -98,7 +113,7 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         }
     }));
 
-    // Effect to initialize canvas properties
+    // Effect to initialize canvas properties and update cursor color
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -111,7 +126,12 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         ctx.strokeStyle = brushColor;
         ctx.lineCap = lineCap;
         ctx.lineJoin = 'round';
-    }, [brushColor, brushSize, lineCap]);
+
+        // Update cursor color when brush color changes
+        if (customCursorRef.current && !isEraser) {
+            customCursorRef.current.style.backgroundColor = `${brushColor}80`;
+        }
+    }, [brushColor, brushSize, lineCap, isEraser]);
 
     // Effect to redraw remote strokes
     useEffect(() => {
@@ -126,11 +146,20 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         // Draw the most recent remote stroke
         const stroke = remoteStrokes[remoteStrokes.length - 1];
         if (stroke && stroke.points.length > 0) {
-            const { points, brushColor, brushSize, lineCap } = stroke;
+            const { points, brushColor, brushSize, lineCap, isEraser } = stroke;
 
             ctx.save();
             ctx.lineWidth = brushSize;
-            ctx.strokeStyle = brushColor;
+
+            // Set composite operation based on whether it's an eraser
+            if (isEraser) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)'; // Color doesn't matter for eraser
+            } else {
+                ctx.globalCompositeOperation = 'source-over'; // Default
+                ctx.strokeStyle = brushColor;
+            }
+
             ctx.lineCap = lineCap;
             ctx.lineJoin = 'round';
 
@@ -158,7 +187,7 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
 
         // Process each received partial stroke
         remotePartialStrokes.forEach(partialStroke => {
-            const { strokeId, points, brushColor, brushSize, lineCap, sequence } = partialStroke;
+            const { strokeId, points, brushColor, brushSize, lineCap, sequence, isEraser } = partialStroke;
 
             // Skip if this user's own stroke
             if (partialStroke.userId === userId) return;
@@ -174,7 +203,16 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
             if (points.length >= 2) {
                 ctx.save();
                 ctx.lineWidth = brushSize;
-                ctx.strokeStyle = brushColor;
+
+                // Set composite operation based on whether it's an eraser
+                if (isEraser) {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.strokeStyle = 'rgba(0,0,0,1)'; // Color doesn't matter for eraser
+                } else {
+                    ctx.globalCompositeOperation = 'source-over'; // Default
+                    ctx.strokeStyle = brushColor;
+                }
+
                 ctx.lineCap = lineCap;
                 ctx.lineJoin = 'round';
 
@@ -263,16 +301,55 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         // Reset tracking of partial strokes
         processedPartialStrokeIds.current.clear();
         highestSequence.current.clear();
+
+        // Set the clear operation flag
+        recentClearOperation.current = true;
+
+        // Reset the last known stroke count
+        lastKnownStrokeCount.current = 0;
+
+        // 本地清除也需要标记清除事件
+        setReceivedClearEvent(true);
     }, []);
 
-    // New effect to detect when canvas should be cleared due to remote clear action
+    // Update lastKnownStrokeCount when remoteStrokes changes
     useEffect(() => {
-        // Check if remoteStrokes went from having strokes to being empty
-        if (remoteStrokes.length === 0 && !isDrawing) {
-            // This could indicate a remote clear action
-            clearCanvasFunc();
+        if (remoteStrokes.length > 0) {
+            lastKnownStrokeCount.current = remoteStrokes.length;
+            // If we get new strokes, we're no longer in a "recent clear" state
+            recentClearOperation.current = false;
         }
-    }, [remoteStrokes.length, clearCanvasFunc, isDrawing]);
+    }, [remoteStrokes]);
+
+    // 在remoteStrokes变为空数组时检测清除事件
+    useEffect(() => {
+        if (remoteStrokes.length === 0 && receivedClearEvent) {
+            // 执行清除并重置标志
+            clearCanvasFunc();
+            setReceivedClearEvent(false);
+
+            // 重置绘制状态
+            if (isDrawing) {
+                setIsDrawing(false);
+                setCurrentStroke([]);
+            }
+        }
+    }, [remoteStrokes.length, receivedClearEvent, clearCanvasFunc, isDrawing]);
+
+    // 在组件挂载时将setReceivedClearEvent函数传递给父组件
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            // 将函数挂载到window对象，以便其他组件可以访问
+            (window as any).notifyCanvasClearEvent = () => {
+                setReceivedClearEvent(true);
+            };
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                delete (window as any).notifyCanvasClearEvent;
+            }
+        };
+    }, []);
 
     const getCoordinates = (
         e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
@@ -299,6 +376,14 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         return null;
     };
 
+    // Update custom cursor position
+    const updateCustomCursorPosition = useCallback((x: number, y: number) => {
+        setMousePosition({ x, y });
+        if (customCursorRef.current) {
+            customCursorRef.current.style.transform = `translate(${x - brushSize / 2}px, ${y - brushSize / 2}px)`;
+        }
+    }, [brushSize]);
+
     // Handle cursor movement for collaboration
     const handleCursorMove = (
         e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -310,6 +395,9 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
 
         const coordinates = getCoordinates(e, canvas);
         if (!coordinates) return;
+
+        // Update custom cursor position
+        updateCustomCursorPosition(coordinates.x, coordinates.y);
 
         onCursorMove({
             x: coordinates.x,
@@ -337,11 +425,12 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
             lineCap,
             userId,
             timestamp: now,
-            sequence: sequenceNumber.current
+            sequence: sequenceNumber.current,
+            isEraser: isEraser // Add the eraser property
         };
 
         onPartialStroke(partialStroke);
-    }, [brushColor, brushSize, currentStroke, isDrawing, lineCap, onPartialStroke, userId, syncInterval]);
+    }, [brushColor, brushSize, currentStroke, isDrawing, lineCap, onPartialStroke, userId, syncInterval, isEraser]);
 
     const startDrawing = (
         e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -399,6 +488,19 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         ctx.beginPath();
         ctx.moveTo(lastPosition.x, lastPosition.y);
         ctx.lineTo(coordinates.x, coordinates.y);
+
+        // Configure stroke based on whether it's an eraser or brush
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = lineCap;
+
+        if (isEraser) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)'; // Color doesn't matter for eraser
+        } else {
+            ctx.globalCompositeOperation = 'source-over'; // Default
+            ctx.strokeStyle = brushColor;
+        }
+
         ctx.stroke();
 
         setLastPosition(coordinates);
@@ -419,7 +521,8 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
                 brushColor,
                 brushSize,
                 lineCap,
-                userId
+                userId,
+                isEraser: isEraser // Add the eraser property
             };
 
             onStrokeComplete(stroke);
@@ -429,6 +532,26 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
         setCurrentStroke([]);
     };
 
+    // Effect to update custom cursor when brush size or eraser mode changes
+    useEffect(() => {
+        if (customCursorRef.current) {
+            customCursorRef.current.style.width = `${brushSize}px`;
+            customCursorRef.current.style.height = `${brushSize}px`;
+            customCursorRef.current.style.display = disabled ? 'none' : 'block';
+
+            // Update cursor appearance based on mode
+            if (isEraser) {
+                customCursorRef.current.style.border = '2px solid rgba(0, 0, 0, 0.8)';
+                customCursorRef.current.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                customCursorRef.current.style.boxShadow = '0 0 0 1px rgba(255, 255, 255, 0.8)';
+            } else {
+                customCursorRef.current.style.border = '1px solid rgba(255, 255, 255, 0.8)';
+                customCursorRef.current.style.backgroundColor = `${brushColor}80`; // Add 50% opacity to brush color
+                customCursorRef.current.style.boxShadow = '0 0 0 1px rgba(0, 0, 0, 0.3)';
+            }
+        }
+    }, [brushSize, isEraser, disabled, brushColor]);
+
     return (
         <div
             className="canvas-container"
@@ -437,19 +560,57 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
                 width: `${width}px`,
                 height: `${height}px`,
                 marginBottom: '16px', // Add space below the canvas
-                cursor: disabled ? 'not-allowed' : 'crosshair'
+                cursor: disabled ? 'not-allowed' : 'none' // Hide default cursor for both brush and eraser
             }}
         >
+            {/* Custom cursor for both brush and eraser */}
+            <div
+                ref={customCursorRef}
+                className="custom-cursor"
+                style={{
+                    position: 'absolute',
+                    width: `${brushSize}px`,
+                    height: `${brushSize}px`,
+                    borderRadius: '50%',
+                    border: isEraser ? '2px solid rgba(0, 0, 0, 0.8)' : '1px solid rgba(255, 255, 255, 0.8)',
+                    backgroundColor: isEraser ? 'rgba(255, 255, 255, 0.3)' : `${brushColor}80`,
+                    boxShadow: isEraser ? '0 0 0 1px rgba(255, 255, 255, 0.8)' : '0 0 0 1px rgba(0, 0, 0, 0.3)',
+                    transform: `translate(${mousePosition.x - brushSize / 2}px, ${mousePosition.y - brushSize / 2}px)`,
+                    pointerEvents: 'none',
+                    zIndex: 3,
+                    display: disabled ? 'none' : 'block',
+                    transition: 'width 0.1s, height 0.1s, background-color 0.2s' // Smooth transition for size and color
+                }}
+            />
             <canvas
                 ref={canvasRef}
                 width={width}
                 height={height}
                 onMouseDown={startDrawing}
-                onMouseMove={draw}
+                onMouseMove={(e) => {
+                    draw(e);
+                    // Update custom cursor even when not drawing
+                    if (!isDrawing && canvasRef.current) {
+                        const coordinates = getCoordinates(e, canvasRef.current);
+                        if (coordinates) {
+                            updateCustomCursorPosition(coordinates.x, coordinates.y);
+                        }
+                    }
+                }}
                 onMouseUp={endDrawing}
                 onMouseLeave={endDrawing}
                 onTouchStart={startDrawing}
-                onTouchMove={draw}
+                onTouchMove={(e) => {
+                    draw(e);
+                    // Also update custom cursor for touch events
+                    if (canvasRef.current && e.touches.length > 0) {
+                        const rect = canvasRef.current.getBoundingClientRect();
+                        updateCustomCursorPosition(
+                            e.touches[0].clientX - rect.left,
+                            e.touches[0].clientY - rect.top
+                        );
+                    }
+                }}
                 onTouchEnd={endDrawing}
                 style={{
                     border: '1px solid #ccc',
