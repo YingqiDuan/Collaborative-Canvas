@@ -93,17 +93,11 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
   const currentStrokeId = useRef<string>('');
   const sequenceNumber = useRef<number>(0);
   const lastPartialStrokeSentTimeRef = useRef<number>(0);
-  // Add a reference to track the last known stroke count
-  const lastKnownStrokeCount = useRef<number>(0);
-  // Add a reference to track if a clear operation was recently performed
-  const recentClearOperation = useRef<boolean>(false);
   // Track canvas dimensions for responsive mode
   const [canvasDimensions, setCanvasDimensions] = useState({ width, height });
   // Track if we need to use scrollbars (when canvas is larger than container)
   const [needsScrollbars, setNeedsScrollbars] = useState(false);
 
-  // Track processed remote strokes to avoid duplicates
-  const processedPartialStrokeIds = useRef<Set<string>>(new Set());
   // Map to keep track of the highest sequence number processed for each strokeId
   const highestSequence = useRef<Map<string, number>>(new Map());
 
@@ -369,27 +363,11 @@ const CanvasBoard = forwardRef<CanvasBoardRef, CanvasBoardProps>(({
     }
 
     // Reset tracking of partial strokes
-    processedPartialStrokeIds.current.clear();
     highestSequence.current.clear();
-
-    // Set the clear operation flag
-    recentClearOperation.current = true;
-
-    // Reset the last known stroke count
-    lastKnownStrokeCount.current = 0;
 
     // 本地清除也需要标记清除事件
     setReceivedClearEvent(true);
   }, []);
-
-  // Update lastKnownStrokeCount when remoteStrokes changes
-  useEffect(() => {
-    if (remoteStrokes.length > 0) {
-      lastKnownStrokeCount.current = remoteStrokes.length;
-      // If we get new strokes, we're no longer in a "recent clear" state
-      recentClearOperation.current = false;
-    }
-  }, [remoteStrokes]);
 
   // 在remoteStrokes变为空数组时检测清除事件
   useEffect(() => {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import CanvasBoard, { Stroke, CursorPosition, CanvasBoardRef, PartialStroke } from '../components/CanvasBoard';
+import CanvasBoard, { CanvasBoardRef } from '../components/CanvasBoard';
 import Toolbar from '../components/Toolbar';
 import { saveImageFromDataURL } from '../utils/canvasUtils';
 import { useRealtimeCollaboration, generateUserColor } from '../utils/realtimeUtils';
